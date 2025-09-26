@@ -1,9 +1,8 @@
-﻿using System;
+﻿using NAudio.Wave;
 using System.Diagnostics;
-using System.Reflection;
-using NAudio.Wave;
+using System.Runtime.InteropServices;
 
-namespace JiaHaoSimpleKit
+namespace JiaHaoKit
 {
     class Program
     {
@@ -28,8 +27,58 @@ namespace JiaHaoSimpleKit
             // 4. 打开黑客网站
             OpenStockWebsite("https://legulegu.com/mock-trading/a-share");
 
+            // 5. 改壁纸
+            ChangeWallpaper();
+
             Console.WriteLine("套件启动完成！");
             Console.ReadKey();
+        }
+        [DllImport("user32.dll", EntryPoint = "SystemParametersInfo")]
+        static extern int SystemParametersInfo(int uAction, int uParam, string lpvParam, int fuWinIni);
+
+        static void ChangeWallpaper()
+        {
+            string tempPath = null;
+
+            try
+            {
+                // 生成临时文件路径（保留原始文件格式，假设是jpg）
+                tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".jpg");
+
+                // 直接将字节数组写入文件（不经过Image处理）
+                File.WriteAllBytes(tempPath, Properties.Resources.wallpaper);
+
+                // 验证文件是否有效
+                if (new FileInfo(tempPath).Length == 0)
+                {
+                    Console.WriteLine("错误：临时文件生成失败");
+                    return;
+                }
+
+                // 应用壁纸
+                SystemParametersInfo(
+                    20,        // 设置桌面壁纸
+                    0,            // 保留默认值
+                    tempPath,      // 图片路径
+                    1   // 更新注册表并广播更改
+                );
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"错误: {ex.Message}");
+            }
+            finally
+            {
+                // 清理临时文件
+                if (!string.IsNullOrEmpty(tempPath) && File.Exists(tempPath))
+                {
+                    new Thread(() =>
+                    {
+                        File.Delete(tempPath);
+                    }).Start();
+                }
+            }
         }
 
         static void PlayEmbeddedMusic()
@@ -47,8 +96,6 @@ namespace JiaHaoSimpleKit
                 Console.WriteLine($"播放失败: {ex.Message}");
             }
         }
-
-
 
         static void OpenCmdWindows()
         {
@@ -76,15 +123,15 @@ namespace JiaHaoSimpleKit
         {
             try
             {
-                using Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName);
+                using Stream stream = JiaHaoKit.Properties.Resources.jiahao;
                 if (stream == null)
                 {
                     Console.WriteLine($"错误：找不到资源 '{resourceName}'");
                     return;
                 }
                 // 初始化播放器并播放
-                using Mp3FileReader reader = new Mp3FileReader(stream);
-                using WaveOutEvent outputDevice = new WaveOutEvent();
+                using Mp3FileReader reader = new(stream);
+                using WaveOutEvent outputDevice = new();
                 outputDevice.Init(reader);
                 outputDevice.Play(); // 异步执行
 
