@@ -42,6 +42,7 @@ namespace JiaHaoKit
 
             try
             {
+                // 创建临时文件
                 // 生成临时文件路径（保留原始文件格式，假设是jpg）
                 tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".jpg");
 
